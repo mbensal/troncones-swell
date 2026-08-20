@@ -6,7 +6,7 @@
 <title>Troncones swell — ensemble outlook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
   :root{
     --sand:#F7F1E5; --sand-deep:#EFE6D2; --ink:#2A2521; --muted:#8A8378;
@@ -77,9 +77,9 @@
      Bands show where the middle 50% and 80% of the ensemble members land — the honest width of the forecast.</p>
   <div id="cone"></div>
   <div class="legend" id="legend">
-    <span class="key"><span class="swatch" style="background:var(--teal)"></span>GEFS median (31 members)</span>
+    <span class="key"><span class="swatch" style="background:var(--teal)"></span>GEFS median</span>
     <span class="key"><span class="swatch" style="background:var(--teal-soft)"></span>GEFS 50% / 80% bands</span>
-    <span class="key"><span class="swatch" style="background:var(--terra)"></span>ECMWF median (51 members)</span>
+    <span class="key"><span class="swatch" style="background:var(--terra)"></span>ECMWF median</span>
     <label><input type="checkbox" id="ecmwfBand"> show ECMWF band</label>
   </div>
 
@@ -106,7 +106,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v3
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v4
   </footer>
 </div>
 
@@ -135,6 +135,23 @@ function showErr(msg){
 }
 window.addEventListener("error", e => showErr("Page script error: " + e.message +
   (e.lineno ? " (line " + e.lineno + ")" : "")));
+window.addEventListener("unhandledrejection", e => showErr("Page script error (async): " +
+  (e.reason && e.reason.message ? e.reason.message : e.reason)));
+
+function ensurePlotly(ms){
+  return new Promise(resolve => {
+    if(window.Plotly) return resolve(true);
+    const alt = document.createElement("script");
+    alt.src = "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js";
+    document.head.appendChild(alt);
+    const t0 = Date.now();
+    (function poll(){
+      if(window.Plotly) return resolve(true);
+      if(Date.now() - t0 > ms) return resolve(false);
+      setTimeout(poll, 150);
+    })();
+  });
+}
 function localDayKey(iso){
   const d = parseUTC(iso); d.setUTCHours(d.getUTCHours() + TZ_OFFSET_H);
   return d.toISOString().slice(0,10);
@@ -282,9 +299,9 @@ function drawSurvival(H, F, dateKey){
     F.point.label + "<br>" + parts.join(" · ") + "<br>updated " + F.generated_utc;
 
   let showEcBand = false;
-  drawCone(F, showEcBand);
   document.getElementById("ecmwfBand").addEventListener("change", e=>{
-    showEcBand = e.target.checked; drawCone(F, showEcBand);
+    showEcBand = e.target.checked;
+    if(window.Plotly) drawCone(F, showEcBand);
   });
 
   const hsEl = document.getElementById("hsMin"), tpEl = document.getElementById("tpMin");
@@ -299,12 +316,12 @@ function drawSurvival(H, F, dateKey){
   try{ refreshStrips(); }
   catch(e){ showErr("Probability strip failed: " + (e && e.message || e)); }
 
+  let H = [];
+  try{ H = await getJSON("history.json"); }catch(e){}
+  const sel = document.getElementById("watchDate");
   try{
-    let H = [];
-    try{ H = await getJSON("history.json"); }catch(e){}
     const anySrc = F.sources.gefs || F.sources.ecmwf;
     const dayKeys = [...new Set(anySrc.times.map(localDayKey))].sort();
-    const sel = document.getElementById("watchDate");
     dayKeys.forEach(k=>{
       const o = document.createElement("option");
       o.value = k; o.textContent = dayLabel(k) + "  (" + k + ")";
@@ -318,9 +335,24 @@ function drawSurvival(H, F, dateKey){
       });
     }
     sel.value = best;
-    drawSurvival(H, F, sel.value);
-    sel.addEventListener("change", ()=>drawSurvival(H, F, sel.value));
+    sel.addEventListener("change", ()=>{ if(window.Plotly) drawSurvival(H, F, sel.value); });
   }
+  catch(e){ showErr("Watch-date list failed: " + (e && e.message || e)); }
+
+  const havePlotly = await ensurePlotly(9000);
+  if(!havePlotly){
+    showErr("Chart library could not be loaded from either delivery network " +
+      "(cdn.plot.ly, cdn.jsdelivr.net) — charts unavailable, but every data " +
+      "section is live. A network filter or extension may be blocking those addresses.");
+    const note = '<p class="sub" style="padding-top:48px;text-align:center">' +
+                 'chart area — library unavailable</p>';
+    document.getElementById("cone").innerHTML = note;
+    document.getElementById("survival").innerHTML = note;
+    return;
+  }
+  try{ drawCone(F, showEcBand); }
+  catch(e){ showErr("Cone failed: " + (e && e.message || e)); }
+  try{ drawSurvival(H, F, sel.value); }
   catch(e){ showErr("Survival tracker failed: " + (e && e.message || e)); }
 })();
 </script>
