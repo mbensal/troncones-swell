@@ -40,8 +40,9 @@ POINT_LABEL = "Offshore Troncones (17.5N 102.0W)"
 # GEFS forecast hours: 6-hourly through day 7, 12-hourly to day 16
 GEFS_HOURS = list(range(0, 169, 6)) + list(range(180, 385, 12))
 
-# ECMWF steps: 6-hourly through day 6, 12-hourly to day 15
-ECMWF_STEPS = list(range(0, 145, 6)) + list(range(156, 361, 12))
+# ECMWF steps: 12-hourly to day 15. The wave-ensemble files bundle all 51
+# members per step, so every step requested costs ~150 fields of download.
+ECMWF_STEPS = list(range(0, 361, 12))
 
 GEFS_BUCKET = "https://noaa-gefs-pds.s3.amazonaws.com"
 GEFS_MEMBERS = ["c00"] + [f"p{i:02d}" for i in range(1, 31)]
@@ -62,16 +63,47 @@ def make_session():
     return s
 
 
+_GRID_CACHE = {}
+
 def decode_point_value(message_bytes, lat, lon):
-    """Decode one GRIB message from memory, return value at nearest wet point."""
+    """Decode one GRIB message from memory, return value at nearest wet point.
+
+    The nearest-point search is expensive, so we do it once per grid geometry
+    and cache the flat indexes of the four nearest points; every later message
+    on the same grid is a single direct element read.
+    """
     import eccodes
     gid = eccodes.codes_new_from_message(message_bytes)
     try:
+        try:
+            key = tuple(eccodes.codes_get(gid, k) for k in
+                        ("Ni", "Nj", "latitudeOfFirstGridPointInDegrees",
+                         "longitudeOfFirstGridPointInDegrees",
+                         "iDirectionIncrementInDegrees", "jScansPositively"))
+        except Exception:
+            key = None
+
+        if key is not None and key in _GRID_CACHE:
+            for idx in _GRID_CACHE[key]:
+                try:
+                    v = eccodes.codes_get_double_element(gid, "values", idx)
+                except Exception:
+                    continue
+                if v is not None and abs(v) < 9000:
+                    return float(v)
+            return None
+
         for lon_try in (lon, lon % 360):
             try:
-                nearest = eccodes.codes_grib_find_nearest(gid, lat, lon_try, npoints=4)
+                nearest = eccodes.codes_grib_find_nearest(gid, lat, lon_try,
+                                                          npoints=4)
             except Exception:
                 continue
+            if key is not None:
+                try:
+                    _GRID_CACHE[key] = [int(pt.index) for pt in nearest]
+                except Exception:
+                    pass
             for pt in nearest:
                 v = pt.value
                 if v is not None and abs(v) < 9000:
@@ -253,11 +285,15 @@ def fetch_ecmwf():
 
     data = {v: {} for v in ("swh", "mwp", "mwd")}
     cycle = None
+    n_msgs = 0
     with open(tmp.name, "rb") as f:
         while True:
             gid = eccodes.codes_grib_new_from_file(f)
             if gid is None:
                 break
+            n_msgs += 1
+            if n_msgs % 1000 == 0:
+                print(f"ECMWF decoding... {n_msgs} fields")
             try:
                 short = eccodes.codes_get(gid, "shortName")
                 if short not in data:
