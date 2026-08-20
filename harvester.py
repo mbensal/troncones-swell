@@ -213,7 +213,9 @@ def fetch_ecmwf():
     from ecmwf.opendata import Client
 
     client = Client(source="ecmwf")
-    request = dict(stream="enfo", type=["cf", "pf"],
+    # Wave ensemble lives in its own stream: waef, type "ef" (all 50+1 members
+    # bundled per step). The atmospheric ensemble stream (enfo) has no wave fields.
+    request = dict(stream="waef", type="ef",
                    param=["swh", "mwp", "mwd"], step=ECMWF_STEPS)
 
     # Candidate cycles, newest first. If the newest is still mid-publication
