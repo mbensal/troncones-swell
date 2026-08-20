@@ -106,7 +106,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice.
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v3
   </footer>
 </div>
 
@@ -122,7 +122,19 @@ async function getJSON(name){
   return await r2.json();
 }
 
-function parseUTC(s){ return new Date(s.replace("Z",":00Z").replace("::",":")); }
+function parseUTC(s){
+  const m = String(s).match(/(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/);
+  return new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]));
+}
+function showErr(msg){
+  const box = document.createElement("div");
+  box.className = "err";
+  box.textContent = msg;
+  const anchor = document.getElementById("strips");
+  anchor.parentNode.insertBefore(box, anchor);
+}
+window.addEventListener("error", e => showErr("Page script error: " + e.message +
+  (e.lineno ? " (line " + e.lineno + ")" : "")));
 function localDayKey(iso){
   const d = parseUTC(iso); d.setUTCHours(d.getUTCHours() + TZ_OFFSET_H);
   return d.toISOString().slice(0,10);
@@ -284,28 +296,32 @@ function drawSurvival(H, F, dateKey){
   }
   hsEl.addEventListener("input", refreshStrips);
   tpEl.addEventListener("input", refreshStrips);
-  refreshStrips();
+  try{ refreshStrips(); }
+  catch(e){ showErr("Probability strip failed: " + (e && e.message || e)); }
 
-  let H = [];
-  try{ H = await getJSON("history.json"); }catch(e){}
-  const anySrc = F.sources.gefs || F.sources.ecmwf;
-  const dayKeys = [...new Set(anySrc.times.map(localDayKey))].sort();
-  const sel = document.getElementById("watchDate");
-  dayKeys.forEach(k=>{
-    const o = document.createElement("option");
-    o.value = k; o.textContent = dayLabel(k) + "  (" + k + ")";
-    sel.appendChild(o);
-  });
-  let best = dayKeys[0], bestV = -1;
-  if(F.sources.gefs){
-    F.sources.gefs.times.forEach((iso,j)=>{
-      const v = F.sources.gefs.hs_stats.median[j];
-      if(v != null && v > bestV){ bestV = v; best = localDayKey(iso); }
+  try{
+    let H = [];
+    try{ H = await getJSON("history.json"); }catch(e){}
+    const anySrc = F.sources.gefs || F.sources.ecmwf;
+    const dayKeys = [...new Set(anySrc.times.map(localDayKey))].sort();
+    const sel = document.getElementById("watchDate");
+    dayKeys.forEach(k=>{
+      const o = document.createElement("option");
+      o.value = k; o.textContent = dayLabel(k) + "  (" + k + ")";
+      sel.appendChild(o);
     });
+    let best = dayKeys[0], bestV = -1;
+    if(F.sources.gefs){
+      F.sources.gefs.times.forEach((iso,j)=>{
+        const v = F.sources.gefs.hs_stats.median[j];
+        if(v != null && v > bestV){ bestV = v; best = localDayKey(iso); }
+      });
+    }
+    sel.value = best;
+    drawSurvival(H, F, sel.value);
+    sel.addEventListener("change", ()=>drawSurvival(H, F, sel.value));
   }
-  sel.value = best;
-  drawSurvival(H, F, sel.value);
-  sel.addEventListener("change", ()=>drawSurvival(H, F, sel.value));
+  catch(e){ showErr("Survival tracker failed: " + (e && e.message || e)); }
 })();
 </script>
 </body>
