@@ -215,17 +215,37 @@ def fetch_ecmwf():
     client = Client(source="ecmwf")
     request = dict(stream="enfo", type=["cf", "pf"],
                    param=["swh", "mwp", "mwd"], step=ECMWF_STEPS)
+
+    # Candidate cycles, newest first. If the newest is still mid-publication
+    # (files appear progressively over ~2h), fall back one cycle at a time.
+    candidates = []
     try:
         latest = client.latest(**request)
-        request["date"] = latest.strftime("%Y%m%d")
-        request["time"] = latest.hour
         print(f"ECMWF latest ENS cycle: {latest:%Y-%m-%d %HZ}")
+        candidates = [latest - timedelta(hours=12 * i) for i in range(3)]
     except Exception as e:
-        print(f"ECMWF latest() unavailable ({e}); requesting default latest")
+        print(f"ECMWF latest() unavailable ({e}); trying recent cycles blind")
+        now = datetime.now(timezone.utc)
+        base = now.replace(hour=(0 if now.hour < 12 else 12), minute=0,
+                           second=0, microsecond=0)
+        candidates = [base - timedelta(hours=12 * i) for i in range(1, 4)]
 
     tmp = tempfile.NamedTemporaryFile(suffix=".grib2", delete=False)
     tmp.close()
-    client.retrieve(target=tmp.name, **request)
+    last_err = None
+    for cyc in candidates:
+        req = dict(request, date=cyc.strftime("%Y%m%d"), time=cyc.hour)
+        try:
+            client.retrieve(target=tmp.name, **req)
+            print(f"ECMWF using cycle {cyc:%Y-%m-%d %HZ}")
+            last_err = None
+            break
+        except Exception as e:
+            last_err = e
+            print(f"ECMWF cycle {cyc:%Y-%m-%d %HZ} not complete yet ({e}); "
+                  f"stepping back")
+    if last_err is not None:
+        raise RuntimeError(f"No complete ECMWF cycle available: {last_err}")
     size_mb = os.path.getsize(tmp.name) / 1e6
     print(f"ECMWF download complete: {size_mb:.0f} MB")
 
