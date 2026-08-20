@@ -210,6 +210,14 @@ function drawStrips(F, hsMin, tpMin){
     });
     row.appendChild(chips); box.appendChild(row);
   }
+  const all = [...box.querySelectorAll(".chip .p")].map(x => parseInt(x.textContent));
+  if(all.length && all.every(p => p >= 95)){
+    const note = document.createElement("p");
+    note.className = "footnote";
+    note.textContent = "Every member clears these thresholds — the row has nothing to " +
+      "distinguish. Raise the sliders until the chips start disagreeing with each other.";
+    box.appendChild(note);
+  }
 }
 
 function drawSurvival(H, F, dateKey){
@@ -234,9 +242,12 @@ function drawSurvival(H, F, dateKey){
     yaxis:{title:{text:"forecast median (m) for "+dateKey}, gridcolor:"#E7DCC6", rangemode:"tozero"},
     legend:{orientation:"h", y:1.12}
   };
-  if(!tr.length){
-    layout.annotations = [{text:"One run so far — this chart grows a point every twelve hours.",
-      showarrow:false, font:{color:"#8A8378", size:13}, xref:"paper", yref:"paper", x:.5, y:.5}];
+  const npts = tr.reduce((n, t) => n + t.y.length, 0);
+  if(npts < 3){
+    layout.annotations = [{text: (npts === 0 ? "No runs recorded for this date yet."
+        : npts + (npts === 1 ? " run" : " runs") + " so far — this chart gains a point every twelve hours."),
+      showarrow:false, font:{color:"#8A8378", size:13}, xref:"paper", yref:"paper",
+      x:.5, y:.92}];
   }
   Plotly.newPlot("survival", tr, layout, {displayModeBar:false, responsive:true});
 }
