@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troncones swell — ensemble outlook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<style>
+  :root{
+    --sand:#F7F1E5; --sand-deep:#EFE6D2; --ink:#2A2521; --muted:#8A8378;
+    --teal:#0F6E56; --teal-soft:rgba(15,110,86,.16); --teal-faint:rgba(15,110,86,.08);
+    --terra:#B4552D; --terra-soft:rgba(180,85,45,.14); --terra-faint:rgba(180,85,45,.07);
+    --marigold:#E8A13D; --line:#DDD2BC;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--sand);color:var(--ink);
+       font-family:'IBM Plex Sans',sans-serif;font-size:15px;line-height:1.55}
+  .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 48px}
+  header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+         gap:8px 24px;border-bottom:1px solid var(--line);padding-bottom:14px}
+  h1{font-family:'EB Garamond',serif;font-weight:600;font-style:normal;
+     font-size:clamp(26px,4vw,36px);margin:0;letter-spacing:.2px}
+  .meta{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);text-align:right}
+  h2{font-family:'EB Garamond',serif;font-weight:600;font-style:normal;
+     font-size:21px;margin:34px 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+  #cone{width:100%;height:400px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
+          font-size:13px;color:var(--muted);margin-top:2px}
+  .key{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:22px;height:11px;border-radius:2px;display:inline-block}
+  .legend label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink)}
+  .controls{display:flex;flex-wrap:wrap;gap:18px 40px;align-items:center;
+            background:var(--sand-deep);border:1px solid var(--line);
+            border-radius:10px;padding:14px 18px;margin:18px 0 6px}
+  .ctl{display:flex;align-items:center;gap:12px;flex:1 1 300px}
+  .ctl b{font-weight:500;white-space:nowrap}
+  .ctl input[type=range]{flex:1;accent-color:var(--teal)}
+  .val{font-family:'IBM Plex Mono',monospace;font-weight:500;min-width:56px;text-align:right}
+  .striprow{display:flex;align-items:stretch;gap:6px;margin:8px 0}
+  .striplabel{flex:0 0 64px;font-family:'IBM Plex Mono',monospace;font-size:12px;
+              color:var(--muted);display:flex;align-items:center}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;flex:1}
+  .chip{flex:0 0 58px;border-radius:8px;padding:7px 4px 6px;text-align:center;
+        border:1px solid var(--line);background:#fff}
+  .chip .d{font-size:11px;color:var(--muted);letter-spacing:.3px}
+  .chip .p{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;margin-top:2px}
+  .chip.p1{background:#FBF7EC}
+  .chip.p2{background:#F6DFB4;border-color:#E8C57F}
+  .chip.p3{background:var(--marigold);border-color:#C9821F}
+  .chip.p3 .d{color:#5c400f}
+  .chip.p4{background:var(--teal);border-color:var(--teal)}
+  .chip.p4 .d,.chip.p4 .p{color:#F1FAF6}
+  .footnote{font-size:12px;color:var(--muted);margin-top:6px}
+  #survival{width:100%;height:300px}
+  select{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;
+         background:#fff;color:var(--ink)}
+  footer{margin-top:44px;border-top:1px solid var(--line);padding-top:14px;
+         font-size:12px;color:var(--muted)}
+  .err{background:#fff;border:1px solid var(--line);border-left:4px solid var(--terra);
+       border-radius:0;padding:14px 16px;margin:26px 0}
+  @media (max-width:640px){ #cone{height:320px} .meta{text-align:left} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Troncones swell</h1>
+    <div class="meta" id="meta">loading…</div>
+  </header>
+
+  <h2>The cone</h2>
+  <p class="sub" id="conesub">Sixteen days of open-ocean swell at the offshore point.
+     Bands show where the middle 50% and 80% of the ensemble members land — the honest width of the forecast.</p>
+  <div id="cone"></div>
+  <div class="legend" id="legend">
+    <span class="key"><span class="swatch" style="background:var(--teal)"></span>GEFS median (31 members)</span>
+    <span class="key"><span class="swatch" style="background:var(--teal-soft)"></span>GEFS 50% / 80% bands</span>
+    <span class="key"><span class="swatch" style="background:var(--terra)"></span>ECMWF median (51 members)</span>
+    <label><input type="checkbox" id="ecmwfBand"> show ECMWF band</label>
+  </div>
+
+  <h2>Probability of a swell</h2>
+  <p class="sub">Share of ensemble members clearing both thresholds on each day. Slide to taste.</p>
+  <div class="controls">
+    <div class="ctl"><b>Height ≥</b>
+      <input type="range" id="hsMin" min="0.5" max="3.5" step="0.1" value="1.2">
+      <span class="val" id="hsVal">1.2 m</span></div>
+    <div class="ctl"><b>Period ≥</b>
+      <input type="range" id="tpMin" min="6" max="20" step="1" value="12">
+      <span class="val" id="tpVal">12 s</span></div>
+  </div>
+  <div id="strips"></div>
+  <p class="footnote">ECMWF reports mean period, which reads roughly 15–20% lower than the
+     peak period GEFS reports — its row will look shyer at the same slider setting. Days run on local time (UTC−6).</p>
+
+  <h2>Swell survival tracker</h2>
+  <p class="sub">How the forecast for one chosen day has evolved across successive model runs.
+     A line that holds is confidence; a line that wanders is the spread talking.</p>
+  <div style="margin:6px 0 4px"><label>Watch date&nbsp;
+    <select id="watchDate"></select></label></div>
+  <div id="survival"></div>
+
+  <footer id="foot">
+    Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
+    Statistics computed independently of either agency · A personal instrument, not navigation advice.
+  </footer>
+</div>
+
+<script>
+const ABS = "https://mbensal.github.io/troncones-swell/";
+const TZ_OFFSET_H = -6; // Guerrero local time
+
+async function getJSON(name){
+  try{ const r = await fetch(name, {cache:"no-store"});
+       if(r.ok) return await r.json(); }catch(e){}
+  const r2 = await fetch(ABS + name, {cache:"no-store"});
+  if(!r2.ok) throw new Error(name + " unreachable");
+  return await r2.json();
+}
+
+function parseUTC(s){ return new Date(s.replace("Z",":00Z").replace("::",":")); }
+function localDayKey(iso){
+  const d = parseUTC(iso); d.setUTCHours(d.getUTCHours() + TZ_OFFSET_H);
+  return d.toISOString().slice(0,10);
+}
+function dayLabel(key){
+  const d = new Date(key + "T12:00:00Z");
+  return d.toLocaleDateString("en-US",{weekday:"short", day:"numeric", timeZone:"UTC"});
+}
+
+function coneTraces(src, color, soft, faint, showBand, dash){
+  const t = src.times, s = src.hs_stats, tr = [];
+  if(showBand){
+    tr.push({x:t, y:s.p10, mode:"lines", line:{width:0}, hoverinfo:"skip", showlegend:false});
+    tr.push({x:t, y:s.p90, mode:"lines", line:{width:0}, fill:"tonexty",
+             fillcolor:faint, hoverinfo:"skip", showlegend:false});
+    tr.push({x:t, y:s.p25, mode:"lines", line:{width:0}, hoverinfo:"skip", showlegend:false});
+    tr.push({x:t, y:s.p75, mode:"lines", line:{width:0}, fill:"tonexty",
+             fillcolor:soft, hoverinfo:"skip", showlegend:false});
+  }
+  tr.push({x:t, y:s.median, mode:"lines", name:src.name.toUpperCase()+" median",
+           line:{color:color, width:2.5, dash:dash||"solid"},
+           hovertemplate:"%{x|%a %b %d %H:%M}Z<br>"+src.name.toUpperCase()+
+                         " median %{y:.2f} m<extra></extra>"});
+  return tr;
+}
+
+function drawCone(F, showEcBand){
+  const tr = [];
+  if(F.sources.gefs)  tr.push(...coneTraces(F.sources.gefs,
+      "#0F6E56","rgba(15,110,86,.16)","rgba(15,110,86,.08)", true));
+  if(F.sources.ecmwf) tr.push(...coneTraces(F.sources.ecmwf,
+      "#B4552D","rgba(180,85,45,.14)","rgba(180,85,45,.07)", showEcBand, "dot"));
+  Plotly.newPlot("cone", tr, {
+    margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+    font:{family:"IBM Plex Sans", size:12, color:"#2A2521"},
+    xaxis:{gridcolor:"#E7DCC6", tickformat:"%b %d"},
+    yaxis:{title:{text:"significant height (m)"}, gridcolor:"#E7DCC6", rangemode:"tozero"},
+    showlegend:false, hovermode:"x unified"
+  }, {displayModeBar:false, responsive:true});
+}
+
+function dailyProbability(src, hsMin, tpMin){
+  const byDay = {};
+  src.times.forEach((iso,j)=>{
+    const key = localDayKey(iso);
+    (byDay[key] = byDay[key] || []).push(j);
+  });
+  const out = [];
+  for(const key of Object.keys(byDay).sort()){
+    let hit = 0, total = 0;
+    for(let m = 0; m < src.hs_members.length; m++){
+      let memberHit = false, memberHas = false;
+      for(const j of byDay[key]){
+        const h = src.hs_members[m][j], p = src.tp_members[m][j];
+        if(h == null || p == null) continue;
+        memberHas = true;
+        if(h >= hsMin && p >= tpMin) memberHit = true;
+      }
+      if(memberHas){ total++; if(memberHit) hit++; }
+    }
+    if(total >= 5) out.push({key, pct: Math.round(100*hit/total)});
+  }
+  return out;
+}
+
+function drawStrips(F, hsMin, tpMin){
+  const box = document.getElementById("strips");
+  box.innerHTML = "";
+  for(const name of ["gefs","ecmwf"]){
+    const src = F.sources[name]; if(!src) continue;
+    const days = dailyProbability(src, hsMin, tpMin);
+    const row = document.createElement("div"); row.className = "striprow";
+    const lab = document.createElement("div"); lab.className = "striplabel";
+    lab.textContent = name.toUpperCase(); row.appendChild(lab);
+    const chips = document.createElement("div"); chips.className = "chips";
+    days.forEach(d=>{
+      const c = document.createElement("div");
+      const cls = d.pct >= 70 ? "p4" : d.pct >= 40 ? "p3" : d.pct >= 15 ? "p2" : "p1";
+      c.className = "chip " + cls;
+      c.title = dayLabel(d.key) + " — " + d.pct + "% of members clear " +
+                hsMin.toFixed(1) + " m at " + tpMin + " s";
+      c.innerHTML = '<div class="d">' + dayLabel(d.key) + '</div><div class="p">' +
+                    d.pct + '%</div>';
+      chips.appendChild(c);
+    });
+    row.appendChild(chips); box.appendChild(row);
+  }
+}
+
+function drawSurvival(H, F, dateKey){
+  const bySrc = {};
+  (H||[]).forEach(e=>{
+    const v = e.daily_median_hs && e.daily_median_hs[dateKey];
+    if(v == null) return;
+    (bySrc[e.source] = bySrc[e.source] || {x:[],y:[]});
+    bySrc[e.source].x.push(e.run_utc); bySrc[e.source].y.push(v);
+  });
+  const colors = {gefs:"#0F6E56", ecmwf:"#B4552D"};
+  const tr = Object.keys(bySrc).map(s=>({
+    x:bySrc[s].x, y:bySrc[s].y, mode:"lines+markers", name:s.toUpperCase(),
+    line:{color:colors[s]||"#8A8378", width:2},
+    marker:{size:7, color:colors[s]||"#8A8378"},
+    hovertemplate:"run %{x|%b %d %H:%M}Z → %{y:.2f} m<extra>"+s.toUpperCase()+"</extra>"
+  }));
+  const layout = {
+    margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+    font:{family:"IBM Plex Sans", size:12, color:"#2A2521"},
+    xaxis:{gridcolor:"#E7DCC6", title:{text:"model run"}},
+    yaxis:{title:{text:"forecast median (m) for "+dateKey}, gridcolor:"#E7DCC6", rangemode:"tozero"},
+    legend:{orientation:"h", y:1.12}
+  };
+  if(!tr.length){
+    layout.annotations = [{text:"One run so far — this chart grows a point every twelve hours.",
+      showarrow:false, font:{color:"#8A8378", size:13}, xref:"paper", yref:"paper", x:.5, y:.5}];
+  }
+  Plotly.newPlot("survival", tr, layout, {displayModeBar:false, responsive:true});
+}
+
+(async function init(){
+  let F;
+  try{ F = await getJSON("forecast.json"); }
+  catch(e){
+    document.getElementById("meta").textContent = "no data";
+    document.getElementById("cone").outerHTML =
+      '<div class="err"><b>Could not load forecast.json.</b> The harvester may not have ' +
+      'committed results yet, or this page is hosted away from the data. It retries on refresh.</div>';
+    return;
+  }
+
+  const parts = [];
+  for(const s of Object.values(F.sources))
+    parts.push(s.name.toUpperCase() + " " + s.cycle_utc + " (" + s.n_members + " members)");
+  document.getElementById("meta").innerHTML =
+    F.point.label + "<br>" + parts.join(" · ") + "<br>updated " + F.generated_utc;
+
+  let showEcBand = false;
+  drawCone(F, showEcBand);
+  document.getElementById("ecmwfBand").addEventListener("change", e=>{
+    showEcBand = e.target.checked; drawCone(F, showEcBand);
+  });
+
+  const hsEl = document.getElementById("hsMin"), tpEl = document.getElementById("tpMin");
+  function refreshStrips(){
+    const h = parseFloat(hsEl.value), t = parseFloat(tpEl.value);
+    document.getElementById("hsVal").textContent = h.toFixed(1) + " m";
+    document.getElementById("tpVal").textContent = t + " s";
+    drawStrips(F, h, t);
+  }
+  hsEl.addEventListener("input", refreshStrips);
+  tpEl.addEventListener("input", refreshStrips);
+  refreshStrips();
+
+  let H = [];
+  try{ H = await getJSON("history.json"); }catch(e){}
+  const anySrc = F.sources.gefs || F.sources.ecmwf;
+  const dayKeys = [...new Set(anySrc.times.map(localDayKey))].sort();
+  const sel = document.getElementById("watchDate");
+  dayKeys.forEach(k=>{
+    const o = document.createElement("option");
+    o.value = k; o.textContent = dayLabel(k) + "  (" + k + ")";
+    sel.appendChild(o);
+  });
+  let best = dayKeys[0], bestV = -1;
+  if(F.sources.gefs){
+    F.sources.gefs.times.forEach((iso,j)=>{
+      const v = F.sources.gefs.hs_stats.median[j];
+      if(v != null && v > bestV){ bestV = v; best = localDayKey(iso); }
+    });
+  }
+  sel.value = best;
+  drawSurvival(H, F, sel.value);
+  sel.addEventListener("change", ()=>drawSurvival(H, F, sel.value));
+})();
+</script>
+</body>
+</html>
