@@ -16,7 +16,7 @@ concurrency:
 jobs:
   harvest:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Get the repository files
         uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
         run: pip install --quiet ecmwf-opendata eccodes numpy requests
 
       - name: Run the harvester
-        run: python harvester.py
+        run: python -u harvester.py
 
       - name: Save results back to the repository
         run: |
