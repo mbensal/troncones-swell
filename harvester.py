@@ -188,7 +188,7 @@ def gefs_fetch_one(session, cycle, member, hour):
             continue
         offsets.append(int(parts[1]))
         var = parts[3]
-        if var in ("HTSGW", "PERPW", "DIRPW"):
+        if var in ("HTSGW", "PERPW", "DIRPW", "WIND", "WDIR"):
             wanted[var] = i
     out = {}
     for var, i in wanted.items():
@@ -223,7 +223,7 @@ def fetch_gefs():
         raise RuntimeError("Too many missing GEFS files; aborting this source")
 
     # Decode serially (eccodes is not thread-safe)
-    data = {v: {} for v in ("HTSGW", "PERPW", "DIRPW")}
+    data = {v: {} for v in ("HTSGW", "PERPW", "DIRPW", "WIND", "WDIR")}
     for (member, hour), blobs in raw.items():
         for var, blob in blobs.items():
             val = decode_point_value(blob, POINT_LAT, POINT_LON)
@@ -232,6 +232,7 @@ def fetch_gefs():
     return assemble_source(
         name="gefs", cycle=cycle, members=GEFS_MEMBERS, steps=GEFS_HOURS,
         hs=data["HTSGW"], per=data["PERPW"], dr=data["DIRPW"],
+        wind=data["WIND"], wdir=data["WDIR"],
         period_note="peak period of primary swell (PERPW)",
     )
 
@@ -331,7 +332,8 @@ def fetch_ecmwf():
 # Shared assembly + statistics
 # ----------------------------------------------------------------------
 
-def assemble_source(name, cycle, members, steps, hs, per, dr, period_note):
+def assemble_source(name, cycle, members, steps, hs, per, dr, period_note,
+                    wind=None, wdir=None):
     times = [(cycle + timedelta(hours=h)).strftime("%Y-%m-%dT%H:%MZ")
              for h in steps]
 
@@ -354,7 +356,18 @@ def assemble_source(name, cycle, members, steps, hs, per, dr, period_note):
         col = [dr.get(mem, {}).get(h) for mem in members]
         dir_median.append(circular_mean_deg(col))
 
+    out_extra = {}
+    if wind:
+        wind_m = to_matrix(wind)
+        wind_stats = matrix_stats(wind_m)
+        out_extra["wind_members"] = [clean_list(row, 1) for row in wind_m]
+        out_extra["wind_median"] = clean_list(wind_stats["median"], 1)
+        out_extra["wdir_median"] = [
+            circular_mean_deg([wdir.get(mem, {}).get(hh) for mem in members])
+            for hh in steps] if wdir else None
+
     return {
+        **out_extra,
         "name": name,
         "cycle_utc": cycle.strftime("%Y-%m-%dT%H:%MZ"),
         "n_members": len(members),
@@ -380,18 +393,25 @@ def update_history(sources):
 
     run_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
     for src in sources:
-        daily = {}
-        for t, v in zip(src["times"], src["hs_stats"]["median"]):
+        peak = {}
+        for j, t in enumerate(src["times"]):
+            v = src["hs_stats"]["median"][j]
+            if v is None:
+                continue
             day = t[:10]
-            if v is not None:
-                daily.setdefault(day, []).append(v)
+            if day not in peak or v > peak[day][0]:
+                peak[day] = (v, j)
         entry = {
             "run_utc": run_utc,
             "source": src["name"],
             "cycle_utc": src["cycle_utc"],
-            "daily_median_hs": {d: round(max(vals), 2)
-                                for d, vals in daily.items()},
+            "daily_median_hs": {d: round(v, 2) for d, (v, j) in peak.items()},
+            "daily_tp": {d: src["tp_median"][j] for d, (v, j) in peak.items()},
+            "daily_dir": {d: src["dir_median"][j] for d, (v, j) in peak.items()},
         }
+        if src.get("wind_median"):
+            entry["daily_wind"] = {d: src["wind_median"][j]
+                                   for d, (v, j) in peak.items()}
         history.append(entry)
 
     history = history[-HISTORY_MAX_ENTRIES:]
@@ -448,7 +468,12 @@ def selftest():
     per = {m: {h: float(12 + rng.normal(0, 1)) for h in steps} for m in members}
     dr = {m: {h: float((200 + rng.normal(0, 8)) % 360) for h in steps}
           for m in members}
-    src = assemble_source("test", cycle, members, steps, hs, per, dr, "test")
+    wnd = {m: {h: float(6 + rng.normal(0, 2)) for h in steps} for m in members}
+    wdd = {m: {h: float((50 + rng.normal(0, 15)) % 360) for h in steps} for m in members}
+    src = assemble_source("test", cycle, members, steps, hs, per, dr, "test",
+                          wind=wnd, wdir=wdd)
+    assert len(src["wind_median"]) == len(steps)
+    assert all(0 <= d < 360 for d in src["wdir_median"])
     assert len(src["times"]) == len(steps)
     assert len(src["hs_members"]) == 31
     med = src["hs_stats"]["median"]
