@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Troncones swell — ensemble outlook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tenor+Sans&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
   :root{
-    --sand:#F7F1E5; --sand-deep:#EFE6D2; --ink:#2A2521; --muted:#8A8378;
-    --teal:#0F6E56; --teal-soft:rgba(15,110,86,.16); --teal-faint:rgba(15,110,86,.08);
-    --terra:#B4552D; --terra-soft:rgba(180,85,45,.14); --terra-faint:rgba(180,85,45,.07);
-    --marigold:#E8A13D; --line:#DDD2BC;
+    --sand:#EDEFF1; --sand-deep:#E3E6E9; --ink:#16181B; --muted:#737C85;
+    --teal:#1F2937; --teal-soft:rgba(31,41,55,.16); --teal-faint:rgba(31,41,55,.08);
+    --terra:#8A939C; --terra-soft:rgba(138,147,156,.20); --terra-faint:rgba(138,147,156,.10);
+    --marigold:#6B7680; --line:#D5DADE;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--sand);color:var(--ink);
@@ -20,11 +20,11 @@
   .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 48px}
   header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
          gap:8px 24px;border-bottom:1px solid var(--line);padding-bottom:14px}
-  h1{font-family:'EB Garamond',serif;font-weight:600;font-style:normal;
-     font-size:clamp(26px,4vw,36px);margin:0;letter-spacing:.2px}
+  h1{font-family:'Tenor Sans',sans-serif;font-weight:400;font-style:normal;
+     font-size:clamp(25px,3.6vw,33px);margin:0;letter-spacing:.8px;line-height:1.3}
   .meta{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);text-align:right}
-  h2{font-family:'EB Garamond',serif;font-weight:600;font-style:normal;
-     font-size:21px;margin:34px 0 4px}
+  h2{font-family:'Tenor Sans',sans-serif;font-weight:400;font-style:normal;
+     font-size:20px;margin:36px 0 6px;letter-spacing:.7px;line-height:1.35}
   .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
   #cone{width:100%;height:400px}
   .legend{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
@@ -47,12 +47,12 @@
         border:1px solid var(--line);background:#fff}
   .chip .d{font-size:11px;color:var(--muted);letter-spacing:.3px}
   .chip .p{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;margin-top:2px}
-  .chip.p1{background:#FBF7EC}
-  .chip.p2{background:#F6DFB4;border-color:#E8C57F}
-  .chip.p3{background:var(--marigold);border-color:#C9821F}
-  .chip.p3 .d{color:#5c400f}
+  .chip.p1{background:#F5F7F8}
+  .chip.p2{background:#D9DEE2;border-color:#C2C9CF}
+  .chip.p3{background:var(--marigold);border-color:#566069}
+  .chip.p3 .d{color:#EFF2F4}
   .chip.p4{background:var(--teal);border-color:var(--teal)}
-  .chip.p4 .d,.chip.p4 .p{color:#F1FAF6}
+  .chip.p4 .d,.chip.p4 .p{color:#EFF2F4}
   .footnote{font-size:12px;color:var(--muted);margin-top:6px}
   #survival{width:100%;height:300px}
   select{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;
@@ -66,17 +66,18 @@
   .dwc .hs{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;margin-top:3px}
   .dwc .avg{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);margin-top:1px}
   .dwc .rng{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)}
+  .dwc .per{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:2px}
   .dwc .sw{font-size:13.5px;margin-top:3px}
   .dwc .ar{display:inline-block;font-size:13px}
   .dwc .wd{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:3px}
   .w-off{color:var(--teal);font-weight:500}
-  .w-on{color:var(--terra);font-weight:500}
+  .w-on{color:#566069;font-weight:500}
   .w-x{color:var(--muted)}
   .logrow{display:flex;flex-wrap:wrap;gap:4px 14px;padding:9px 2px;
           border-bottom:1px solid var(--line);font-size:14px;align-items:baseline}
   .logrow .ld{font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:12.5px}
   .logstars{color:var(--marigold);letter-spacing:1.5px}
-  .err{background:#fff;border:1px solid var(--line);border-left:4px solid var(--terra);
+  .err{background:#fff;border:1px solid var(--line);border-left:4px solid #16181B;
        border-radius:0;padding:14px 16px;margin:26px 0}
   @media (max-width:640px){ #cone{height:320px} .meta{text-align:left} }
 </style>
@@ -101,7 +102,7 @@
   </div>
 
   <h2>Day by day</h2>
-  <p class="sub" id="dwsub">Median offshore size at each day's peak — with the ensemble average beneath it, and the min\u2013max span of individual members. Then swell direction, and the dawn wind (sampled near 7 AM local). Offshore breeze on this coast blows from the NE quadrant.</p>
+  <p class="sub" id="dwsub">Median offshore size and period at each day's peak — with the ensemble average beneath it, and the min\u2013max span of individual members. Then swell direction, and the dawn wind (sampled near 7 AM local). Offshore breeze on this coast blows from the NE quadrant.</p>
   <div class="dw" id="dirwind"></div>
 
   <h2>Probability of a swell</h2>
@@ -132,7 +133,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v7
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v9
   </footer>
 </div>
 
@@ -252,16 +253,16 @@ function coneTraces(src, color, soft, faint, showBand, dash){
 function drawCone(F, showEcBand){
   const tr = [];
   if(F.sources.gefs)  tr.push(...coneTraces(F.sources.gefs,
-      "#0F6E56","rgba(15,110,86,.16)","rgba(15,110,86,.08)", true));
+      "#1F2937","rgba(31,41,55,.16)","rgba(31,41,55,.08)", true));
   if(F.sources.ecmwf) tr.push(...coneTraces(F.sources.ecmwf,
-      "#B4552D","rgba(180,85,45,.14)","rgba(180,85,45,.07)", showEcBand, "dot"));
+      "#8A939C","rgba(138,147,156,.14)","rgba(138,147,156,.07)", showEcBand, "dot"));
   Plotly.newPlot("cone", tr, {
     margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
-    font:{family:"IBM Plex Sans", size:12, color:"#2A2521"},
-    xaxis:{gridcolor:"#E7DCC6", tickformat:"%b %d"},
-    yaxis:{title:{text:"significant height (m)"}, gridcolor:"#E7DCC6", rangemode:"tozero"},
-    hoverlabel:{bgcolor:"#FFFDF6", bordercolor:"#C9BFA8",
-      font:{family:"IBM Plex Mono", size:12, color:"#2A2521"}},
+    font:{family:"IBM Plex Sans", size:12, color:"#16181B"},
+    xaxis:{gridcolor:"#D5DADE", tickformat:"%b %d"},
+    yaxis:{title:{text:"significant height (m)"}, gridcolor:"#D5DADE", rangemode:"tozero"},
+    hoverlabel:{bgcolor:"#FFFFFF", bordercolor:"#C2C9CF",
+      font:{family:"IBM Plex Mono", size:12, color:"#16181B"}},
     showlegend:false, hovermode:"x unified"
   }, {displayModeBar:false, responsive:true});
 }
@@ -290,6 +291,7 @@ function drawDirWind(src){
     let jm = byDay[k][0], bd = 99;
     byDay[k].forEach(j=>{ const hh=parseUTC(src.times[j]).getUTCHours();
       const d=Math.abs(hh-13); if(d<bd){ bd=d; jm=j; } });
+    const tp = src.tp_median ? src.tp_median[jp] : null;
     const dir = src.dir_median ? src.dir_median[jp] : null;
     const cell = document.createElement("div"); cell.className = "dwc";
     const dayEl = document.createElement("div"); dayEl.className="d";
@@ -298,6 +300,12 @@ function drawDirWind(src){
     hsEl.textContent = best >= 0 ? best.toFixed(2) + " m" : "\u2014";
     hsEl.title = "ensemble median at the day's peak";
     cell.appendChild(hsEl);
+    if(tp != null){
+      const perEl = document.createElement("div"); perEl.className = "per";
+      perEl.textContent = Math.round(tp) + " s";
+      perEl.title = "median peak period at the day's peak: " + tp + " s";
+      cell.appendChild(perEl);
+    }
     if(src.hs_members && best >= 0){
       const col = src.hs_members.map(r => r[jp]).filter(v => v != null);
       if(col.length >= 5){
@@ -406,27 +414,27 @@ function drawSurvival(H, F, dateKey){
     (bySrc[e.source] = bySrc[e.source] || {x:[],y:[]});
     bySrc[e.source].x.push(e.run_utc); bySrc[e.source].y.push(v);
   });
-  const colors = {gefs:"#0F6E56", ecmwf:"#B4552D"};
+  const colors = {gefs:"#1F2937", ecmwf:"#8A939C"};
   const tr = Object.keys(bySrc).map(s=>({
     x:bySrc[s].x, y:bySrc[s].y, mode:"lines+markers", name:s.toUpperCase(),
-    line:{color:colors[s]||"#8A8378", width:2},
-    marker:{size:7, color:colors[s]||"#8A8378"},
+    line:{color:colors[s]||"#737C85", width:2},
+    marker:{size:7, color:colors[s]||"#737C85"},
     hovertemplate:"run %{x|%b %d %H:%M}Z → %{y:.2f} m<extra>"+s.toUpperCase()+"</extra>"
   }));
   const layout = {
     margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
-    font:{family:"IBM Plex Sans", size:12, color:"#2A2521"},
-    xaxis:{gridcolor:"#E7DCC6", title:{text:"model run"}},
-    yaxis:{title:{text:"forecast median (m) for "+dateKey}, gridcolor:"#E7DCC6", rangemode:"tozero"},
-    hoverlabel:{bgcolor:"#FFFDF6", bordercolor:"#C9BFA8",
-      font:{family:"IBM Plex Mono", size:12, color:"#2A2521"}},
+    font:{family:"IBM Plex Sans", size:12, color:"#16181B"},
+    xaxis:{gridcolor:"#D5DADE", title:{text:"model run"}},
+    yaxis:{title:{text:"forecast median (m) for "+dateKey}, gridcolor:"#D5DADE", rangemode:"tozero"},
+    hoverlabel:{bgcolor:"#FFFFFF", bordercolor:"#C2C9CF",
+      font:{family:"IBM Plex Mono", size:12, color:"#16181B"}},
     legend:{orientation:"h", y:1.12}
   };
   const npts = tr.reduce((n, t) => n + t.y.length, 0);
   if(npts < 3){
     layout.annotations = [{text: (npts === 0 ? "No runs recorded for this date yet."
         : npts + (npts === 1 ? " run" : " runs") + " so far — this chart gains a point every twelve hours."),
-      showarrow:false, font:{color:"#8A8378", size:13}, xref:"paper", yref:"paper",
+      showarrow:false, font:{color:"#737C85", size:13}, xref:"paper", yref:"paper",
       x:.5, y:.92}];
   }
   Plotly.newPlot("survival", tr, layout, {displayModeBar:false, responsive:true});
