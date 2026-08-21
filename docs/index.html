@@ -73,10 +73,12 @@
   .w-off{color:var(--teal);font-weight:500}
   .w-on{color:#566069;font-weight:500}
   .w-x{color:var(--muted)}
-  .logrow{display:flex;flex-wrap:wrap;gap:4px 14px;padding:9px 2px;
-          border-bottom:1px solid var(--line);font-size:14px;align-items:baseline}
-  .logrow .ld{font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:12.5px}
-  .logstars{color:var(--marigold);letter-spacing:1.5px}
+  .verd{background:#fff;border:1px solid var(--line);border-radius:8px;
+        padding:10px 14px;margin:8px 0 10px}
+  .verd .vline{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:3px 0}
+  .verd .vsrc{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);min-width:52px}
+  .verd .vword{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500}
+  .verd .vnum{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--muted)}
   .err{background:#fff;border:1px solid var(--line);border-left:4px solid #16181B;
        border-radius:0;padding:14px 16px;margin:26px 0}
   @media (max-width:640px){ #cone{height:320px} .meta{text-align:left} }
@@ -120,20 +122,16 @@
      peak period GEFS reports — its row will look shyer at the same slider setting. Days run on local time (UTC−6).</p>
 
   <h2>Swell survival tracker</h2>
-  <p class="sub">How the forecast for one chosen day has evolved across successive model runs.
-     A line that holds is confidence; a line that wanders is the spread talking.</p>
+  <p class="sub">Every 12 hours the machine re-forecasts the same day. This panel says whether
+     its story is staying straight; the chart below is the full trail of calls.</p>
   <div style="margin:6px 0 4px"><label>Watch date&nbsp;
     <select id="watchDate"></select></label></div>
+  <div id="verdict"></div>
   <div id="survival"></div>
-
-  <h2>Logbook</h2>
-  <p class="sub">Your eyes, on the record. One line per session — over time this becomes the
-     translation layer between the offshore numbers and what the beach actually did.</p>
-  <div id="logbook"></div>
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v9
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v11
   </footer>
 </div>
 
@@ -164,51 +162,6 @@ window.addEventListener("error", e => showErr("Page script error: " + e.message 
   (e.lineno ? " (line " + e.lineno + ")" : "")));
 window.addEventListener("unhandledrejection", e => showErr("Page script error (async): " +
   (e.reason && e.reason.message ? e.reason.message : e.reason)));
-
-async function getText(name){
-  try{ const r = await fetch(name, {cache:"no-store"}); if(r.ok) return await r.text(); }catch(e){}
-  const r2 = await fetch(ABS + name, {cache:"no-store"});
-  if(!r2.ok) throw new Error(name + " unreachable");
-  return await r2.text();
-}
-function parseLog(text){
-  const rows = [];
-  text.split(/\r?\n/).slice(1).forEach(line=>{
-    if(!line.trim()) return;
-    const p = line.split(",");
-    if(p.length < 7) return;
-    rows.push({date:p[0].trim(), time:p[1].trim(), spot:p[2].trim(),
-      fmin:parseFloat(p[3]), fmax:parseFloat(p[4]), q:parseInt(p[5]),
-      wind:p[6].trim(), notes:p.slice(7).join(",").trim()});
-  });
-  rows.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
-  return rows;
-}
-function renderLog(rows){
-  const box = document.getElementById("logbook");
-  box.innerHTML = "";
-  if(!rows.length){
-    const p = document.createElement("p"); p.className = "footnote";
-    p.textContent = "No sessions yet — the calibration era begins with your first line.";
-    box.appendChild(p); return;
-  }
-  const head = document.createElement("p"); head.className = "footnote";
-  head.textContent = rows.length + " session" + (rows.length===1?"":"s") + " logged.";
-  box.appendChild(head);
-  rows.slice(0,6).forEach(r=>{
-    const d = document.createElement("div"); d.className = "logrow";
-    const face = isNaN(r.fmin) ? "" :
-      (isNaN(r.fmax) || r.fmax===r.fmin ? r.fmin+" ft" : r.fmin+"\u2013"+r.fmax+" ft faces");
-    const cells = [
-      ["ld", r.date+" "+r.time], ["", r.spot.replace(/_/g," ")], ["", face],
-      ["logstars", "\u2605\u2605\u2605\u2605\u2605".slice(0, Math.max(0, Math.min(5, r.q||0)))],
-      ["ld", r.wind + (r.notes ? " \u2014 " + r.notes : "")]
-    ];
-    cells.forEach(([cls, txt])=>{ const s=document.createElement("span");
-      if(cls) s.className=cls; s.textContent=txt; d.appendChild(s); });
-    box.appendChild(d);
-  });
-}
 
 function ensurePlotly(ms){
   return new Promise(resolve => {
@@ -406,6 +359,50 @@ function drawStrips(F, hsMin, tpMin){
   }
 }
 
+function verdictFor(vals){
+  const n = vals.length;
+  if(n < 2) return {word:"too early", arrow:"\u2026",
+    detail: n + " call" + (n===1?"":"s") + " so far \u2014 needs a couple more runs"};
+  const first = vals[0], last = vals[n-1];
+  const d = last - first;
+  const thr = Math.max(0.15, 0.08 * last);
+  const recent = vals.slice(-4);
+  const wob = Math.max.apply(null, recent) - Math.min.apply(null, recent);
+  const span = "first call " + first.toFixed(2) + " m \u2192 now " + last.toFixed(2) +
+               " m across " + n + " runs";
+  if(n >= 3 && wob > 0.25 * last && Math.abs(d) <= thr)
+    return {word:"wobbling", arrow:"\u2248", detail: span + " \u2014 low confidence, keep watching"};
+  if(d > thr)  return {word:"growing", arrow:"\u2197", detail: span};
+  if(d < -thr) return {word:"fading",  arrow:"\u2198", detail: span};
+  return {word:"holding", arrow:"\u2192", detail: span};
+}
+function drawVerdict(H, F, dateKey){
+  const box = document.getElementById("verdict");
+  box.innerHTML = "";
+  const card = document.createElement("div"); card.className = "verd";
+  let any = false;
+  for(const name of ["gefs","ecmwf"]){
+    const vals = (H||[]).filter(e => e.source === name &&
+      e.daily_median_hs && e.daily_median_hs[dateKey] != null)
+      .map(e => e.daily_median_hs[dateKey]);
+    if(!vals.length) continue;
+    any = true;
+    const v = verdictFor(vals);
+    const line = document.createElement("div"); line.className = "vline";
+    const cells = [["vsrc", name.toUpperCase()],
+                   ["vword", v.arrow + " " + v.word], ["vnum", v.detail]];
+    cells.forEach(([cls, txt])=>{ const s = document.createElement("span");
+      s.className = cls; s.textContent = txt; line.appendChild(s); });
+    card.appendChild(line);
+  }
+  if(!any){
+    const p = document.createElement("div"); p.className = "vline";
+    const s = document.createElement("span"); s.className = "vnum";
+    s.textContent = "No calls recorded for this date yet.";
+    p.appendChild(s); card.appendChild(p);
+  }
+  box.appendChild(card);
+}
 function drawSurvival(H, F, dateKey){
   const bySrc = {};
   (H||[]).forEach(e=>{
@@ -483,10 +480,18 @@ function drawSurvival(H, F, dateKey){
   const sel = document.getElementById("watchDate");
   try{
     const anySrc = F.sources.gefs || F.sources.ecmwf;
-    const dayKeys = [...new Set(anySrc.times.map(localDayKey))].sort();
+    const futureDays = new Set(anySrc.times.map(localDayKey));
+    const todayKey = [...futureDays].sort()[0];
+    const cutoff = new Date(Date.now() - 14 * 86400e3).toISOString().slice(0,10);
+    const pastDays = new Set();
+    (H||[]).forEach(e => Object.keys(e.daily_median_hs || {}).forEach(k => {
+      if(k < todayKey && k >= cutoff) pastDays.add(k);
+    }));
+    const dayKeys = [...new Set([...pastDays, ...futureDays])].sort();
     dayKeys.forEach(k=>{
       const o = document.createElement("option");
-      o.value = k; o.textContent = dayLabel(k) + "  (" + k + ")";
+      o.value = k;
+      o.textContent = dayLabel(k) + "  (" + k + ")" + (pastDays.has(k) ? " \u00B7 past" : "");
       sel.appendChild(o);
     });
     let best = dayKeys[0], bestV = -1;
@@ -497,12 +502,13 @@ function drawSurvival(H, F, dateKey){
       });
     }
     sel.value = best;
-    sel.addEventListener("change", ()=>{ if(window.Plotly) drawSurvival(H, F, sel.value); });
+    drawVerdict(H, F, sel.value);
+    sel.addEventListener("change", ()=>{
+      drawVerdict(H, F, sel.value);
+      if(window.Plotly) drawSurvival(H, F, sel.value);
+    });
   }
   catch(e){ showErr("Watch-date list failed: " + (e && e.message || e)); }
-
-  try{ renderLog(parseLog(await getText("log.csv"))); }
-  catch(e){ renderLog([]); }
 
   const havePlotly = await ensurePlotly(9000);
   if(!havePlotly){
