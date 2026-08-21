@@ -60,10 +60,12 @@
   footer{margin-top:44px;border-top:1px solid var(--line);padding-top:14px;
          font-size:12px;color:var(--muted)}
   .dw{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-  .dwc{flex:0 0 96px;background:#fff;border:1px solid var(--line);border-radius:8px;
+  .dwc{flex:0 0 118px;background:#fff;border:1px solid var(--line);border-radius:8px;
        padding:8px 6px;text-align:center}
   .dwc .d{font-size:11px;color:var(--muted);letter-spacing:.3px}
   .dwc .hs{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;margin-top:3px}
+  .dwc .avg{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);margin-top:1px}
+  .dwc .rng{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)}
   .dwc .sw{font-size:13.5px;margin-top:3px}
   .dwc .ar{display:inline-block;font-size:13px}
   .dwc .wd{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:3px}
@@ -99,7 +101,7 @@
   </div>
 
   <h2>Day by day</h2>
-  <p class="sub" id="dwsub">Median offshore size at each day's peak, swell direction, and the dawn wind (sampled near 7 AM local). Offshore breeze on this coast blows from the NE quadrant.</p>
+  <p class="sub" id="dwsub">Median offshore size at each day's peak — with the ensemble average beneath it, and the min\u2013max span of individual members. Then swell direction, and the dawn wind (sampled near 7 AM local). Offshore breeze on this coast blows from the NE quadrant.</p>
   <div class="dw" id="dirwind"></div>
 
   <h2>Probability of a swell</h2>
@@ -130,7 +132,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v6
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v7
   </footer>
 </div>
 
@@ -294,7 +296,23 @@ function drawDirWind(src){
     dayEl.textContent = dayLabel(k); cell.appendChild(dayEl);
     const hsEl = document.createElement("div"); hsEl.className="hs";
     hsEl.textContent = best >= 0 ? best.toFixed(2) + " m" : "\u2014";
+    hsEl.title = "ensemble median at the day's peak";
     cell.appendChild(hsEl);
+    if(src.hs_members && best >= 0){
+      const col = src.hs_members.map(r => r[jp]).filter(v => v != null);
+      if(col.length >= 5){
+        const mn = Math.min.apply(null, col), mx = Math.max.apply(null, col);
+        const av = col.reduce((a,b)=>a+b,0) / col.length;
+        const avEl = document.createElement("div"); avEl.className = "avg";
+        avEl.textContent = "avg " + av.toFixed(2);
+        avEl.title = "ensemble mean (average of all members)";
+        cell.appendChild(avEl);
+        const rgEl = document.createElement("div"); rgEl.className = "rng";
+        rgEl.textContent = mn.toFixed(2) + " \u2013 " + mx.toFixed(2);
+        rgEl.title = "lowest and highest single members";
+        cell.appendChild(rgEl);
+      }
+    }
     const swEl = document.createElement("div"); swEl.className="sw";
     if(dir != null){
       const ar = document.createElement("span"); ar.className="ar";
