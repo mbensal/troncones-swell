@@ -64,6 +64,7 @@
        padding:8px 6px;text-align:center}
   .dwc .d{font-size:11px;color:var(--muted);letter-spacing:.3px}
   .dwc .hs{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;margin-top:3px}
+  .dwc .face{font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:500;margin-top:2px}
   .dwc .avg{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);margin-top:1px}
   .dwc .rng{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)}
   .dwc .per{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:2px}
@@ -104,7 +105,7 @@
   </div>
 
   <h2>Day by day</h2>
-  <p class="sub" id="dwsub">Median offshore size and period at each day's peak — with the ensemble average beneath it, and the min\u2013max span of individual members. Then swell direction, and the dawn wind (sampled near 7 AM local). Offshore breeze on this coast blows from the NE quadrant.</p>
+  <p class="sub" id="dwsub">Median offshore size and period at each day's peak — with the ensemble average beneath it, and the min\u2013max span of individual members. Then swell direction, and the dawn wind (sampled near 7 AM local). The ~ft faces line is a provisional physics estimate, not yet calibrated to this break. Offshore breeze on this coast blows from the NE quadrant.</p>
   <div class="dw" id="dirwind"></div>
 
   <h2>Probability of a swell</h2>
@@ -131,7 +132,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v11
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v12
   </footer>
 </div>
 
@@ -220,6 +221,12 @@ function drawCone(F, showEcBand){
   }, {displayModeBar:false, responsive:true});
 }
 
+const FACE_CAL = 1.0;  // per-break calibration multiplier; 1.0 until observations tune it
+function facesFt(h0, t){
+  if(h0 == null || t == null || h0 <= 0 || t <= 0) return null;
+  const hb = 0.39 * Math.pow(9.81, 0.2) * Math.pow(t * h0 * h0, 0.4);
+  return hb * 3.28084 * FACE_CAL;
+}
 function compass(d){
   const dirs=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
   return d==null ? "?" : dirs[Math.floor(((d+11.25)%360)/22.5)];
@@ -258,6 +265,14 @@ function drawDirWind(src){
       perEl.textContent = Math.round(tp) + " s";
       perEl.title = "median peak period at the day's peak: " + tp + " s";
       cell.appendChild(perEl);
+    }
+    const ff = facesFt(best >= 0 ? best : null, tp);
+    if(ff != null){
+      const fEl = document.createElement("div"); fEl.className = "face";
+      fEl.textContent = "~" + Math.round(ff) + " ft faces";
+      fEl.title = "provisional breaker estimate from median size and period " +
+                  "(Komar\u2013Gaughan) \u2014 not yet calibrated to this break";
+      cell.appendChild(fEl);
     }
     if(src.hs_members && best >= 0){
       const col = src.hs_members.map(r => r[jp]).filter(v => v != null);
