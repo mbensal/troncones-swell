@@ -132,7 +132,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v14
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v15
   </footer>
 </div>
 
@@ -210,6 +210,19 @@ function coneTraces(src, color, soft, faint, showBand, dash){
 }
 
 function drawCone(F, showEcBand){
+  const src = F.sources.gefs || F.sources.ecmwf;
+  const days = [...new Set(src.times.map(localDayKey))].sort();
+  const bands = [];
+  days.forEach((k, i) => {
+    if(i % 2 === 0) return;
+    const next = days[i+1] ? days[i+1] : k;
+    bands.push({type:"rect", xref:"x", yref:"paper",
+      x0: k + " 00:00", x1: (days[i+1] || k) + " 23:59",
+      y0: 0, y1: 1, fillcolor: "rgba(31,41,55,0.04)",
+      line:{width:0}, layer:"below"});
+  });
+  const tickvals = days.map(k => k + " 12:00");
+  const ticktext = days.map(dayLabel);
   const tr = [];
   if(F.sources.gefs)  tr.push(...coneTraces(F.sources.gefs,
       "#1F2937","rgba(31,41,55,.16)","rgba(31,41,55,.08)", true));
@@ -218,7 +231,9 @@ function drawCone(F, showEcBand){
   Plotly.newPlot("cone", tr, {
     margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
     font:{family:"IBM Plex Sans", size:12, color:"#16181B"},
-    xaxis:{gridcolor:"#D5DADE", tickformat:"%b %d", title:{text:"local time (UTC\u22126)"}},
+    xaxis:{showgrid:false, tickvals:tickvals, ticktext:ticktext, tickangle:-45,
+           tickfont:{size:10.5}, title:{text:"local time (UTC\u22126)"}},
+    shapes: bands,
     yaxis:{title:{text:"significant height (m)"}, gridcolor:"#D5DADE", rangemode:"tozero"},
     hoverlabel:{bgcolor:"#FFFFFF", bordercolor:"#C2C9CF",
       font:{family:"IBM Plex Mono", size:12, color:"#16181B"}},
