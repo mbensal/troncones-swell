@@ -105,7 +105,7 @@
   </div>
 
   <h2>Day by day</h2>
-  <p class="sub" id="dwsub">Median offshore size and period at each day's peak — with the ensemble average beneath it, and the min\u2013max span of individual members. Then swell direction, and the dawn wind (sampled near 7 AM local). The ~ft faces line is a provisional physics estimate, not yet calibrated to this break. Offshore breeze on this coast blows from the NE quadrant.</p>
+  <p class="sub" id="dwsub">Median offshore size and period at each day's peak — with the ensemble average beneath it, and the min\u2013max span of individual members. Then swell direction, and the dawn wind (sampled near 7 AM local). The ~m faces line is a provisional physics estimate, not yet calibrated to this break. Offshore breeze on this coast blows from the NE quadrant.</p>
   <div class="dw" id="dirwind"></div>
 
   <h2>Probability of a swell</h2>
@@ -132,7 +132,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v12
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v14
   </footer>
 </div>
 
@@ -151,6 +151,11 @@ async function getJSON(name){
 function parseUTC(s){
   const m = String(s).match(/(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/);
   return new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]));
+}
+function toLocalPlot(iso){
+  const d = parseUTC(iso);
+  d.setUTCHours(d.getUTCHours() + TZ_OFFSET_H);
+  return d.toISOString().slice(0, 16).replace("T", " ");
 }
 function showErr(msg){
   const box = document.createElement("div");
@@ -188,7 +193,7 @@ function dayLabel(key){
 }
 
 function coneTraces(src, color, soft, faint, showBand, dash){
-  const t = src.times, s = src.hs_stats, tr = [];
+  const t = src.times.map(toLocalPlot), s = src.hs_stats, tr = [];
   if(showBand){
     tr.push({x:t, y:s.p10, mode:"lines", line:{width:0}, hoverinfo:"skip", showlegend:false});
     tr.push({x:t, y:s.p90, mode:"lines", line:{width:0}, fill:"tonexty",
@@ -199,7 +204,7 @@ function coneTraces(src, color, soft, faint, showBand, dash){
   }
   tr.push({x:t, y:s.median, mode:"lines", name:src.name.toUpperCase()+" median",
            line:{color:color, width:2.5, dash:dash||"solid"},
-           hovertemplate:"%{x|%a %b %d %H:%M}Z<br>"+src.name.toUpperCase()+
+           hovertemplate:"%{x|%a %b %d %H:%M} local<br>"+src.name.toUpperCase()+
                          " median %{y:.2f} m<extra></extra>"});
   return tr;
 }
@@ -213,7 +218,7 @@ function drawCone(F, showEcBand){
   Plotly.newPlot("cone", tr, {
     margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
     font:{family:"IBM Plex Sans", size:12, color:"#16181B"},
-    xaxis:{gridcolor:"#D5DADE", tickformat:"%b %d"},
+    xaxis:{gridcolor:"#D5DADE", tickformat:"%b %d", title:{text:"local time (UTC\u22126)"}},
     yaxis:{title:{text:"significant height (m)"}, gridcolor:"#D5DADE", rangemode:"tozero"},
     hoverlabel:{bgcolor:"#FFFFFF", bordercolor:"#C2C9CF",
       font:{family:"IBM Plex Mono", size:12, color:"#16181B"}},
@@ -222,10 +227,10 @@ function drawCone(F, showEcBand){
 }
 
 const FACE_CAL = 1.0;  // per-break calibration multiplier; 1.0 until observations tune it
-function facesFt(h0, t){
+function facesM(h0, t){
   if(h0 == null || t == null || h0 <= 0 || t <= 0) return null;
   const hb = 0.39 * Math.pow(9.81, 0.2) * Math.pow(t * h0 * h0, 0.4);
-  return hb * 3.28084 * FACE_CAL;
+  return hb * FACE_CAL;
 }
 function compass(d){
   const dirs=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
@@ -266,10 +271,10 @@ function drawDirWind(src){
       perEl.title = "median peak period at the day's peak: " + tp + " s";
       cell.appendChild(perEl);
     }
-    const ff = facesFt(best >= 0 ? best : null, tp);
+    const ff = facesM(best >= 0 ? best : null, tp);
     if(ff != null){
       const fEl = document.createElement("div"); fEl.className = "face";
-      fEl.textContent = "~" + Math.round(ff) + " ft faces";
+      fEl.textContent = "~" + ff.toFixed(1) + " m faces";
       fEl.title = "provisional breaker estimate from median size and period " +
                   "(Komar\u2013Gaughan) \u2014 not yet calibrated to this break";
       cell.appendChild(fEl);
@@ -424,19 +429,19 @@ function drawSurvival(H, F, dateKey){
     const v = e.daily_median_hs && e.daily_median_hs[dateKey];
     if(v == null) return;
     (bySrc[e.source] = bySrc[e.source] || {x:[],y:[]});
-    bySrc[e.source].x.push(e.run_utc); bySrc[e.source].y.push(v);
+    bySrc[e.source].x.push(toLocalPlot(e.run_utc)); bySrc[e.source].y.push(v);
   });
   const colors = {gefs:"#1F2937", ecmwf:"#8A939C"};
   const tr = Object.keys(bySrc).map(s=>({
     x:bySrc[s].x, y:bySrc[s].y, mode:"lines+markers", name:s.toUpperCase(),
     line:{color:colors[s]||"#737C85", width:2},
     marker:{size:7, color:colors[s]||"#737C85"},
-    hovertemplate:"run %{x|%b %d %H:%M}Z → %{y:.2f} m<extra>"+s.toUpperCase()+"</extra>"
+    hovertemplate:"run %{x|%b %d %H:%M} local → %{y:.2f} m<extra>"+s.toUpperCase()+"</extra>"
   }));
   const layout = {
     margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
     font:{family:"IBM Plex Sans", size:12, color:"#16181B"},
-    xaxis:{gridcolor:"#D5DADE", title:{text:"model run"}},
+    xaxis:{gridcolor:"#D5DADE", title:{text:"model run (local time)"}},
     yaxis:{title:{text:"forecast median (m) for "+dateKey}, gridcolor:"#D5DADE", rangemode:"tozero"},
     hoverlabel:{bgcolor:"#FFFFFF", bordercolor:"#C2C9CF",
       font:{family:"IBM Plex Mono", size:12, color:"#16181B"}},
