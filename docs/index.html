@@ -27,6 +27,7 @@
      font-size:20px;margin:36px 0 6px;letter-spacing:.7px;line-height:1.35}
   .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
   #cone{width:100%;height:400px}
+  #cone,#survival{background:#fff;border:1px solid var(--line);border-radius:10px}
   .legend{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
           font-size:13px;color:var(--muted);margin-top:2px}
   .key{display:inline-flex;align-items:center;gap:7px}
@@ -95,7 +96,7 @@
 
   <h2>The cone</h2>
   <p class="sub" id="conesub">Sixteen days of open-ocean swell at the offshore point.
-     Bands show where the middle 50% and 80% of the ensemble members land — the honest width of the forecast.</p>
+     Bands show where the middle 50% and 80% of the ensemble members land — the honest width of the forecast. Times are local (UTC\u22126).</p>
   <div id="cone"></div>
   <div class="legend" id="legend">
     <span class="key"><span class="swatch" style="background:var(--teal)"></span>GEFS median</span>
@@ -132,7 +133,7 @@
 
   <footer id="foot">
     Wave data: NOAA GEFS-Wave (public domain) · ECMWF open data © ECMWF, CC-BY-4.0, modified ·
-    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v15
+    Statistics computed independently of either agency · A personal instrument, not navigation advice. · instrument v16
   </footer>
 </div>
 
@@ -229,10 +230,10 @@ function drawCone(F, showEcBand){
   if(F.sources.ecmwf) tr.push(...coneTraces(F.sources.ecmwf,
       "#8A939C","rgba(138,147,156,.14)","rgba(138,147,156,.07)", showEcBand, "dot"));
   Plotly.newPlot("cone", tr, {
-    margin:{l:46,r:14,t:8,b:40}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+    margin:{l:46,r:14,t:12,b:56}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
     font:{family:"IBM Plex Sans", size:12, color:"#16181B"},
     xaxis:{showgrid:false, tickvals:tickvals, ticktext:ticktext, tickangle:-45,
-           tickfont:{size:10.5}, title:{text:"local time (UTC\u22126)"}},
+           tickfont:{size:10.5}},
     shapes: bands,
     yaxis:{title:{text:"significant height (m)"}, gridcolor:"#D5DADE", rangemode:"tozero"},
     hoverlabel:{bgcolor:"#FFFFFF", bordercolor:"#C2C9CF",
